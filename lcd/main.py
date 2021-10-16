@@ -15,7 +15,6 @@ import threading
 
 #### LOCAL IMPORTS ####
 import ipc
-import utils
 
 #### LCD HARDWARE DECLARATION ####
 disp = ST7735.ST7735(
