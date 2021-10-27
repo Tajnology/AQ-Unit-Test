@@ -36,9 +36,7 @@ TEXT_Y = 10
 #### GLOBAL CONSTANTS ####
 LCD_PORT = 10000
 REFRESH_INTERVAL = 0.5 # seconds
-RECEIVE_IMAGE_EVENT = 'td-image'
-RECEIVE_TEMPERATURE_EVENT = 'air-data'
-DISPLAY_MODE_FILE = '/home/payload/Code/PayloadSoftware/displaymode/display_mode.txt'
+RECEIVE_AQ_DATA = 'air-data'
 FONT_SIZE = 20
 
 #### CLASSES ####
@@ -61,10 +59,6 @@ class RefObj(object):
 #### LOAD FONT ####
 font = ImageFont.truetype("Roboto-Medium.ttf",size=15)
 
-#### GLOBAL VARIABLES ####
-ip = utils.get_ip()
-current_display = 0 # 0 = IP, 1 = Target, 2 = Air
-
 render_image = Image.new('RGB',(WIDTH,HEIGHT), color='white') # Create blank image
 draw = ImageDraw.Draw(render_image)
 
@@ -73,43 +67,32 @@ def main(argv):
     disp.begin() # Initialize the LCD.   
 
     temperature = RefObj()
-    target_image = RefObj()
+    cpu = RefObj()
 
 
     # Establish Inter-Process Communication
-    init_ipc = threading.Thread(target=ipc.init, args=(temperature,target_image,))
+    init_ipc = threading.Thread(target=ipc.init, args=(temperature,cpu,))
     init_ipc.start()
     
-    main_loop_thread = threading.Thread(target=main_loop, args=(temperature,target_image,))
+    main_loop_thread = threading.Thread(target=main_loop, args=(temperature,cpu,))
     main_loop_thread.start()
     
 
-def main_loop(temperature : RefObj, target_image: RefObj):
-    global current_display
+def main_loop(temperature : RefObj, cpu: RefObj):
+
     while(True):
         
-        current_display = utils.get_display_mode(DISPLAY_MODE_FILE)
-        ip = utils.get_ip()
         draw.rectangle([(0,0),(WIDTH,HEIGHT)],fill="white")
-        # Render and display image on LCD
-        if(current_display == 0):
-            # Draw IP to display
-            draw.text((TEXT_X,TEXT_Y),ip,font=font,fill=255)
-        elif(current_display == 1):
-            target_image_val = target_image.get()
-            if(target_image_val != None):
-                im = Image.open(BytesIO(base64.b64decode(target_image_val)))
-                im.thumbnail((WIDTH,1000),Image.ANTIALIAS)
-                render_image.paste(im,None)
-            else:
-                draw.text((TEXT_X,TEXT_Y),"No video feed.",font=font,fill=255)
-                # Draw a 'no image found icon'
-        elif current_display == 2:
-            temperature_val = temperature.get()
-            if temperature_val != None:
-                draw.text((TEXT_X,TEXT_Y),"Temp: " + str(round(temperature_val,2)) + "C",font=font,fill=255)
-            else:
-                draw.text((TEXT_X,TEXT_Y),"No temperature data.",font=font,fill=255)
+        
+        temperature_val = temperature.get()
+        cpu_val = cpu.get()
+        if temperature_val != None:
+            draw.text((TEXT_X,TEXT_Y),"Temp: " + str(round(temperature_val,2)) + "C",font=font,fill=255)
+        else:
+            draw.text((TEXT_X,TEXT_Y),"No temperature data.",font=font,fill=255)
+        
+        if cpu_val != None:
+            draw.text((TEXT_X,3*TEXT_Y),"CPU Temp: " + cpu.get(),font=font,fill=255)
         disp.display(render_image)
 
         time.sleep(REFRESH_INTERVAL)

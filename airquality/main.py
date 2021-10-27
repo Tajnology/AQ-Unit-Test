@@ -22,15 +22,10 @@ LCD_PORT = 10000
 TRANSMISSION_PORT = 10001
 SOUND_DEVICE = 0
 SAMPLE_INTERVAL = 1 # seconds
-NOISE_SAMPLE_DUR = 0.5 # seconds
 TRANSMIT_AQ_DATA_EVENT = 'air-data'
 TRANSMIT_AQ_STATUS_EVENT = 'air-status'
 LOG_GAS_DATA = False
 LOG_FILE_SUFFIX = '2'
-
-#### CREATE NOISE OBJECT ####
-sd.default.device = SOUND_DEVICE
-noise = Noise(duration=NOISE_SAMPLE_DUR)
 
 
 
@@ -57,13 +52,15 @@ def main(argv):
          
         gas_data = gas.read_all()
         temp = bme280.get_temperature()
+        with open(r"/sys/class/thermal/thermal_zone0/temp") as File:
+            cpu_temp = File.readline()
 
         """ data = {'temperature':temp,'pressure':bme280.get_pressure(), # May need to add 
         'humidity':bme280.get_humidity(),'light':ltr559.get_lux(),
         'ox_gas':gas_data.oxidising/1000,'red_gas':gas_data.reducing/1000,
         'amm_gas':gas_data.nh3/1000,'noise_low':amp_low,
         'noise_mid':amp_mid,'noise_high':amp_high} """
-        data = {'temperature':temp,'pressure':bme280.get_pressure(), # May need to add 
+        data = {'temperature':temp,'cpu':cpu_temp,'pressure':bme280.get_pressure(), # May need to add 
         'humidity':bme280.get_humidity(),'light':ltr559.get_lux(),
         'ox_gas':gas_data.oxidising/1000,'red_gas':gas_data.reducing/1000,
         'amm_gas':gas_data.nh3/1000}
@@ -78,7 +75,7 @@ def main(argv):
 
         ipc.msg_transmission(TRANSMIT_AQ_DATA_EVENT,data)
         ipc.msg_transmission(TRANSMIT_AQ_STATUS_EVENT,{'heating': heating})
-        ipc.msg_lcd(TRANSMIT_AQ_DATA_EVENT,{'temperature':temp})
+        ipc.msg_lcd(TRANSMIT_AQ_DATA_EVENT,{'temperature':temp,'cpu':cpu_temp})
 
         time.sleep(SAMPLE_INTERVAL)
 
